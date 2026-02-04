@@ -1,0 +1,668 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Indian Coin Detection System</title>
+
+<!-- TensorFlow & Teachable Machine -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.12.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap');
+
+body {
+    font-family: 'Poppins', sans-serif;
+    background: linear-gradient(135deg, #FF9933, #FFFFFF, #138808);
+    min-height: 100vh;
+    padding: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow-x: hidden;
+}
+
+
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-image: 
+        linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 50px 50px;
+    pointer-events: none;
+    z-index: 0;
+}
+
+
+body::after {
+    content: '';
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 600px;
+    height: 600px;
+    background: radial-gradient(circle, rgba(0, 0, 139, 0.03) 0%, transparent 70%);
+    border: 2px solid rgba(0, 0, 139, 0.1);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 0;
+}
+
+.container {
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(250, 250, 250, 0.98));
+    padding: 40px;
+    max-width: 900px;
+    width: 100%;
+    border-radius: 20px;
+    box-shadow: 
+        0 0 60px rgba(255, 153, 51, 0.3),
+        0 0 100px rgba(19, 136, 8, 0.2),
+        0 20px 60px rgba(0, 0, 0, 0.2);
+    border: 3px solid;
+    border-image: linear-gradient(135deg, #FF9933, #FFFFFF, #138808) 1;
+    position: relative;
+    z-index: 1;
+    backdrop-filter: blur(10px);
+}
+
+
+.container::before,
+.container::after {
+    content: '';
+    position: absolute;
+    width: 80px;
+    height: 80px;
+    background: radial-gradient(circle, rgba(255, 153, 51, 0.2) 0%, transparent 70%);
+    border: 2px solid rgba(255, 153, 51, 0.3);
+    border-radius: 50%;
+}
+
+.container::before {
+    top: -20px;
+    left: -20px;
+}
+
+.container::after {
+    bottom: -20px;
+    right: -20px;
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 35px;
+    position: relative;
+}
+
+.flag-container {
+    width: 120px;
+    height: 80px;
+    margin: 0 auto 20px;
+    position: relative;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
+    border: 2px solid rgba(0, 0, 0, 0.1);
+}
+
+.flag-stripe {
+    width: 100%;
+    height: 33.33%;
+}
+
+.flag-saffron {
+    background: #FF9933;
+}
+
+.flag-white {
+    background: #FFFFFF;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.flag-green {
+    background: #138808;
+}
+
+.ashoka-chakra {
+    width: 24px;
+    height: 24px;
+    position: relative;
+}
+
+.ashoka-chakra::before {
+    content: '☸';
+    font-size: 24px;
+    color: #000080;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: rotate 20s linear infinite;
+}
+
+@keyframes rotate {
+    from { transform: translate(-50%, -50%) rotate(0deg); }
+    to { transform: translate(-50%, -50%) rotate(360deg); }
+}
+
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+h1 {
+    color: #FF9933;
+    font-size: 32px;
+    font-weight: 700;
+    text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.2);
+    margin-bottom: 8px;
+    letter-spacing: 1px;
+}
+
+.subtitle {
+    color: #138808;
+    font-size: 14px;
+    text-transform: uppercase;
+    letter-spacing: 3px;
+    font-weight: 600;
+}
+
+.upload-zone {
+    background: rgba(255, 255, 255, 0.8);
+    border: 3px dashed rgba(255, 153, 51, 0.5);
+    border-radius: 15px;
+    padding: 40px 20px;
+    margin: 30px 0;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.upload-zone:hover {
+    border-color: rgba(255, 153, 51, 0.8);
+    background: rgba(255, 250, 240, 0.95);
+    box-shadow: 0 0 30px rgba(255, 153, 51, 0.3);
+}
+
+.upload-zone::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 153, 51, 0.2), transparent);
+    transition: left 0.5s;
+}
+
+.upload-zone:hover::before {
+    left: 100%;
+}
+
+.upload-icon {
+    font-size: 48px;
+    margin-bottom: 15px;
+    display: block;
+}
+
+.upload-text {
+    color: #FF9933;
+    font-size: 18px;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.upload-hint {
+    color: #666;
+    font-size: 13px;
+}
+
+input[type="file"] {
+    display: none;
+}
+
+.custom-file-input {
+    background: linear-gradient(135deg, #FF9933, #138808);
+    color: white;
+    padding: 14px 35px;
+    border-radius: 50px;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    transition: all 0.3s ease;
+    box-shadow: 0 5px 20px rgba(255, 153, 51, 0.4);
+    margin-top: 15px;
+    display: inline-block;
+}
+
+.custom-file-input:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(255, 153, 51, 0.6);
+    background: linear-gradient(135deg, #ffad5c, #1ba80f);
+}
+
+.custom-file-input:active {
+    transform: translateY(0);
+}
+
+.preview-container {
+    margin: 30px 0;
+    display: none;
+    animation: fadeIn 0.5s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.preview-container.active {
+    display: block;
+}
+
+#preview {
+    width: 100%;
+    max-height: 400px;
+    object-fit: contain;
+    border-radius: 12px;
+    border: 3px solid;
+    border-image: linear-gradient(135deg, #FF9933, #FFFFFF, #138808) 1;
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
+}
+
+.result-container {
+    margin-top: 30px;
+    padding: 25px;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.9), rgba(250, 245, 240, 0.95));
+    border-radius: 12px;
+    border: 2px solid rgba(255, 153, 51, 0.3);
+    box-shadow: 0 5px 20px rgba(0, 0, 0, 0.1);
+    display: none;
+    animation: slideUp 0.5s ease;
+}
+
+@keyframes slideUp {
+    from { opacity: 0; transform: translateY(30px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.result-container.active {
+    display: block;
+}
+
+.result-label {
+    color: #666;
+    font-size: 12px;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+.result-classification {
+    font-size: 32px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    text-shadow: 0 0 20px currentColor;
+}
+
+.result-classification.safe {
+    color: #00ff88;
+}
+
+.result-classification.warning {
+    color: #ffaa00;
+}
+
+.result-classification.danger {
+    color: #ff3366;
+}
+
+.confidence-bar {
+    background: rgba(200, 200, 200, 0.3);
+    height: 10px;
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 15px;
+    position: relative;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
+
+.confidence-fill {
+    height: 100%;
+    background: linear-gradient(90deg, #FF9933, #138808);
+    border-radius: 10px;
+    transition: width 1s ease;
+    box-shadow: 0 0 10px rgba(255, 153, 51, 0.5);
+}
+
+.confidence-text {
+    color: #FF9933;
+    font-size: 14px;
+    margin-top: 8px;
+    text-align: right;
+    font-weight: 600;
+}
+
+.loading {
+    text-align: center;
+    color: #FF9933;
+    font-size: 16px;
+    font-weight: 600;
+    padding: 20px;
+    display: none;
+}
+
+.loading.active {
+    display: block;
+}
+
+.loading::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0%, 20% { content: '.'; }
+    40% { content: '..'; }
+    60%, 100% { content: '...'; }
+}
+
+.footer {
+    text-align: center;
+    margin-top: 30px;
+    padding-top: 20px;
+    border-top: 2px solid;
+    border-image: linear-gradient(90deg, #FF9933, #FFFFFF, #138808) 1;
+}
+
+.status-badge {
+    display: inline-block;
+    padding: 8px 20px;
+    background: rgba(19, 136, 8, 0.1);
+    border: 2px solid #138808;
+    border-radius: 20px;
+    color: #138808;
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.status-badge::before {
+    content: '●';
+    margin-right: 6px;
+    color: #138808;
+    animation: blink 2s ease-in-out infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+}
+
+@media (max-width: 600px) {
+    .container {
+        padding: 25px;
+    }
+    
+    h1 {
+        font-size: 24px;
+    }
+    
+    .result-classification {
+        font-size: 24px;
+    }
+}
+/* Floating Indian Flags Background */
+.floating-flags {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.flag {
+    position: absolute;
+    width: 180px;
+    height: 120px;
+    opacity: 0.08;
+    border-radius: 6px;
+    background: linear-gradient(
+        to bottom,
+        #FF9933 0%,
+        #FF9933 33.33%,
+        #FFFFFF 33.33%,
+        #FFFFFF 66.66%,
+        #138808 66.66%,
+        #138808 100%
+    );
+    animation: floatFlag 30s linear infinite;
+}
+
+/* Ashoka Chakra */
+.flag::after {
+    content: '☸';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 32px;
+    color: #000080;
+    opacity: 0.4;
+}
+
+/* Different positions & speeds */
+.flag1 {
+    top: 10%;
+    left: -200px;
+    animation-duration: 35s;
+}
+
+.flag2 {
+    top: 40%;
+    left: -250px;
+    animation-duration: 45s;
+    transform: scale(0.8);
+}
+
+.flag3 {
+    top: 70%;
+    left: -300px;
+    animation-duration: 55s;
+    transform: scale(1.1);
+}
+
+.flag4 {
+    top: 25%;
+    left: -180px;
+    animation-duration: 40s;
+    transform: scale(0.6);
+}
+
+/* Flying animation */
+@keyframes floatFlag {
+    0% {
+        transform: translateX(0) translateY(0) rotate(0deg);
+    }
+    50% {
+        transform: translateX(60vw) translateY(-30px) rotate(2deg);
+    }
+    100% {
+        transform: translateX(120vw) translateY(0) rotate(0deg);
+    }
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <div class="header">
+        <div class="flag-container">
+            <div class="flag-stripe flag-saffron"></div>
+            <div class="flag-stripe flag-white">
+                <div class="ashoka-chakra"></div>
+            </div>
+            <div class="flag-stripe flag-green"></div>
+        </div>
+        <div class="shield-icon"></div>
+        <h1>James Lili Indian Coin Detector</h1>
+        <h3>भारतीय सिक्का डिटेक्टर </h3>
+        <p class="subtitle">सिक्का पहचान प्रणाली</p>
+    </div>
+
+    <div class="upload-zone" onclick="document.getElementById('fileInput').click()">
+        <img src="C:\Users\LABKOM3-17\Downloads\download (5).png">
+        <span class="upload-icon"></span>
+        <div class="upload-text">Put Image of your Indian Coin!</div>
+        <div class="upload-hint">Supports the eradication of all scams from India!</div>
+        <label class="custom-file-input">
+            Browse Files
+        </label>
+    </div>
+
+    <input type="file" id="fileInput" accept="image/*" onchange="predictImage(event)">
+
+    <div class="loading" id="loading">Analyzing image</div>
+
+    <div class="preview-container" id="previewContainer">
+        <img id="preview" alt="Preview">
+    </div>
+
+    <div class="result-container" id="resultContainer">
+        <div class="result-label">Detection Result</div>
+        <div class="result-classification" id="resultText">--</div>
+        <div class="confidence-bar">
+            <div class="confidence-fill" id="confidenceFill" style="width: 0%"></div>
+        </div>
+        <div class="confidence-text" id="confidenceText">0%</div>
+    </div>
+
+    <div class="footer">
+        <span class="status-badge">System Active</span>
+    </div>
+</div>
+
+<script>
+const MODEL_URL = "https://teachablemachine.withgoogle.com/models/BZNVfb-ZS/";
+
+let model;
+
+// Load model
+async function loadModel() {
+    try {
+        model = await tmImage.load(
+            MODEL_URL + "model.json",
+            MODEL_URL + "metadata.json"
+        );
+        console.log("Sukses!");
+    } catch (e) {
+        alert("Gagal");
+        console.error(e);
+    }
+}
+loadModel();
+
+
+async function predictImage(event) {
+    if (!model) {
+        alert("Wait a second,beta beta");
+        return;
+    }
+
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Show loading
+    document.getElementById('loading').classList.add('active');
+    document.getElementById('resultContainer').classList.remove('active');
+
+    const img = document.getElementById("preview");
+    const previewContainer = document.getElementById("previewContainer");
+    
+    img.src = URL.createObjectURL(file);
+    previewContainer.classList.add('active');
+
+    img.onload = async () => {
+        try {
+            const predictions = await model.predict(img);
+
+            const best = predictions.reduce((a, b) =>
+                a.probability > b.probability ? a : b
+            );
+
+           
+            document.getElementById('loading').classList.remove('active');
+
+            
+            const resultContainer = document.getElementById('resultContainer');
+            const resultText = document.getElementById('resultText');
+            const confidenceFill = document.getElementById('confidenceFill');
+            const confidenceText = document.getElementById('confidenceText');
+
+            resultText.textContent = best.className;
+            
+            
+            resultText.className = 'result-classification';
+            if (best.className.toLowerCase().includes('safe') || 
+                best.className.toLowerCase().includes('legitimate')) {
+                resultText.classList.add('safe');
+            } else if (best.className.toLowerCase().includes('scam') || 
+                       best.className.toLowerCase().includes('fraud')) {
+                resultText.classList.add('danger');
+            } else {
+                resultText.classList.add('warning');
+            }
+
+            const confidence = (best.probability * 100).toFixed(2);
+            confidenceText.textContent = `Confidence: ${confidence}%`;
+            
+            
+            setTimeout(() => {
+                confidenceFill.style.width = confidence + '%';
+            }, 100);
+
+            resultContainer.classList.add('active');
+
+        } catch (e) {
+            console.error(e);
+            alert("Error analyzing image. Please try again.");
+            document.getElementById('loading').classList.remove('active');
+        }
+    };
+}
+
+// Prevent default drag and drop
+document.addEventListener('dragover', (e) => e.preventDefault());
+document.addEventListener('drop', (e) => e.preventDefault());
+</script>
+
+</body>
+</html>

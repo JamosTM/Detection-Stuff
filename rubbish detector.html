@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Deteksi Sampah - Kementerian Kehutanan James Lili</title>
+
+<!-- TensorFlow & Teachable Machine -->
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@4.12.0/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+
+<style>
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: 
+        radial-gradient(circle at 20% 50%, rgba(82, 183, 136, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 80%, rgba(149, 213, 178, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 40% 20%, rgba(45, 106, 79, 0.2) 0%, transparent 50%),
+        linear-gradient(135deg, #1b4332 0%, #2d6a4f 50%, #40916c 100%);
+    background-attachment: fixed;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+}
+
+body::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: 
+        repeating-linear-gradient(45deg, transparent, transparent 35px, rgba(255,255,255,.02) 35px, rgba(255,255,255,.02) 70px);
+    pointer-events: none;
+}
+
+.container {
+    width: 100%;
+    max-width: 600px;
+}
+
+.page {
+    display: none;
+    animation: fadeIn 0.5s ease-in;
+}
+
+.page.active {
+    display: block;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.card {
+    background: white;
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.logo {
+    width: 80px;
+    height: 80px;
+    background: linear-gradient(135deg, #2d6a4f, #52b788);
+    border-radius: 50%;
+    margin: 0 auto 15px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 40px;
+}
+
+.header h1 {
+    color: #1e5128;
+    font-size: 28px;
+    margin-bottom: 8px;
+}
+
+.header .ministry {
+    color: #2d6a4f;
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+.intro-content {
+    text-align: center;
+}
+
+.intro-icon {
+    width: 120px;
+    height: 120px;
+    background: linear-gradient(135deg, #95d5b2, #52b788);
+    border-radius: 50%;
+    margin: 20px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 60px;
+}
+
+.intro-content h2 {
+    color: #1e5128;
+    font-size: 24px;
+    margin-bottom: 15px;
+}
+
+.intro-content p {
+    color: #666;
+    line-height: 1.6;
+    margin-bottom: 25px;
+}
+
+.features {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 20px;
+    margin: 25px 0;
+    text-align: left;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    margin: 12px 0;
+    color: #2d6a4f;
+}
+
+.feature-item::before {
+    content: "✓";
+    background: #52b788;
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 12px;
+    font-weight: bold;
+    flex-shrink: 0;
+}
+
+.btn {
+    background: linear-gradient(135deg, #2d6a4f, #52b788);
+    color: white;
+    border: none;
+    padding: 15px 40px;
+    font-size: 18px;
+    font-weight: 600;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(45, 106, 79, 0.3);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(45, 106, 79, 0.4);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.upload-section {
+    text-align: center;
+    margin: 25px 0;
+}
+
+.upload-label {
+    display: inline-block;
+    background: linear-gradient(135deg, #52b788, #95d5b2);
+    color: white;
+    padding: 15px 30px;
+    border-radius: 50px;
+    cursor: pointer;
+    font-weight: 600;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 15px rgba(82, 183, 136, 0.3);
+}
+
+.upload-label:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(82, 183, 136, 0.4);
+}
+
+#fileInput {
+    display: none;
+}
+
+#preview {
+    width: 100%;
+    max-height: 300px;
+    object-fit: contain;
+    margin-top: 20px;
+    border-radius: 12px;
+    display: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+#preview.show {
+    display: block;
+}
+
+#result {
+    margin-top: 25px;
+    padding: 20px;
+    background: linear-gradient(135deg, #e8f5e9, #c8e6c9);
+    border-radius: 12px;
+    display: none;
+}
+
+#result.show {
+    display: block;
+}
+
+.result-class {
+    font-size: 28px;
+    font-weight: bold;
+    color: #1e5128;
+    margin-bottom: 10px;
+}
+
+.result-confidence {
+    font-size: 18px;
+    color: #2d6a4f;
+}
+
+.progress-bar {
+    background: #e0e0e0;
+    height: 8px;
+    border-radius: 10px;
+    margin-top: 10px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    background: linear-gradient(90deg, #2d6a4f, #52b788);
+    height: 100%;
+    border-radius: 10px;
+    transition: width 0.5s ease;
+}
+
+.back-btn {
+    background: #95d5b2;
+    color: #1e5128;
+    padding: 10px 25px;
+    font-size: 14px;
+    margin-top: 20px;
+}
+
+.back-btn:hover {
+    background: #74c69d;
+}
+
+.loading {
+    text-align: center;
+    color: #2d6a4f;
+    margin-top: 15px;
+    display: none;
+}
+
+.loading.show {
+    display: block;
+}
+
+.spinner {
+    border: 3px solid #e0e0e0;
+    border-top: 3px solid #52b788;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+    margin: 10px auto;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+.footer {
+    text-align: center;
+    margin-top: 20px;
+    color: white;
+    font-size: 12px;
+    opacity: 0.9;
+}
+
+@media (max-width: 480px) {
+    .card {
+        padding: 25px;
+    }
+    
+    .header h1 {
+        font-size: 22px;
+    }
+    
+    .intro-content h2 {
+        font-size: 20px;
+    }
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+    <!-- Page 1: Introduction -->
+    <div id="introPage" class="page active">
+        <div class="card">
+            <div class="header">
+                <div class="logo">🌿</div>
+                <h1>Sistem Deteksi Sampah</h1>
+                <div class="ministry">Kementerian Kehutanan James Lili</div>
+            </div>
+
+            <div class="intro-content">
+                <div class="intro-icon">♻️</div>
+                <h2>Selamat Datang</h2>
+                <p>Sistem deteksi sampah berbasis AI untuk membantu mengklasifikasikan jenis sampah secara otomatis dan akurat.</p>
+
+                <div class="features">
+                    <div class="feature-item">Deteksi otomatis jenis sampah</div>
+                    <div class="feature-item">Akurasi tinggi dengan AI</div>
+                    <div class="feature-item">Mudah digunakan</div>
+                    <div class="feature-item">Ramah lingkungan</div>
+                </div>
+
+                <button class="btn" onclick="goToDetection()">Mulai Deteksi</button>
+            </div>
+        </div>
+
+        <div class="footer">
+            © 2026 Kementerian Kehutanan James Lili<br>
+            Peduli Lingkungan, Masa Depan Berkelanjutan
+        </div>
+    </div>
+
+    <!-- Page 2: Detection -->
+    <div id="detectionPage" class="page">
+        <div class="card">
+            <div class="header">
+                <div class="logo">🌿</div>
+                <h1>Deteksi Sampah</h1>
+                <div class="ministry">Kementerian Kehutanan James Lili</div>
+            </div>
+
+            <div class="upload-section">
+                <label for="fileInput" class="upload-label">
+                    📷 Pilih Gambar Sampah
+                </label>
+                <input type="file" id="fileInput" accept="image/*" onchange="predictImage(event)">
+                
+                <img id="preview">
+                
+                <div class="loading" id="loading">
+                    <div class="spinner"></div>
+                    <p>Menganalisis gambar...</p>
+                </div>
+
+                <div id="result">
+                    <div class="result-class" id="resultClass"></div>
+                    <div class="result-confidence" id="resultConfidence"></div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                </div>
+
+                <button class="btn back-btn" onclick="goToIntro()">← Kembali</button>
+            </div>
+        </div>
+
+        <div class="footer">
+            © 2026 Kementerian Kehutanan James Lili
+        </div>
+    </div>
+</div>
+
+<script>
+const MODEL_URL = "https://teachablemachine.withgoogle.com/models/UiS2UPNzq/";
+
+let model;
+
+// Load model
+async function loadModel() {
+    try {
+        model = await tmImage.load(
+            MODEL_URL + "model.json",
+            MODEL_URL + "metadata.json"
+        );
+        console.log("Model loaded successfully");
+    } catch (e) {
+        alert("Gagal memuat model. Silakan coba lagi.");
+        console.error(e);
+    }
+}
+
+// Initialize
+loadModel();
+
+// Navigation
+function goToDetection() {
+    document.getElementById('introPage').classList.remove('active');
+    document.getElementById('detectionPage').classList.add('active');
+}
+
+function goToIntro() {
+    document.getElementById('detectionPage').classList.remove('active');
+    document.getElementById('introPage').classList.add('active');
+    
+    // Reset detection page
+    document.getElementById('preview').classList.remove('show');
+    document.getElementById('result').classList.remove('show');
+    document.getElementById('fileInput').value = '';
+}
+
+// Predict image
+async function predictImage(event) {
+    if (!model) {
+        alert("Model belum siap. Silakan tunggu sebentar.");
+        return;
+    }
+
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const img = document.getElementById("preview");
+    const loading = document.getElementById("loading");
+    const result = document.getElementById("result");
+
+    // Show image preview
+    img.src = URL.createObjectURL(file);
+    img.classList.add('show');
+    
+    // Show loading
+    loading.classList.add('show');
+    result.classList.remove('show');
+
+    img.onload = async () => {
+        try {
+            const predictions = await model.predict(img);
+
+            const best = predictions.reduce((a, b) =>
+                a.probability > b.probability ? a : b
+            );
+
+            // Hide loading
+            loading.classList.remove('show');
+
+            // Show results
+            const confidence = (best.probability * 100).toFixed(2);
+            document.getElementById('resultClass').textContent = best.className;
+            document.getElementById('resultConfidence').textContent = `Tingkat Kepercayaan: ${confidence}%`;
+            document.getElementById('progressFill').style.width = confidence + '%';
+            
+            result.classList.add('show');
+        } catch (e) {
+            loading.classList.remove('show');
+            alert("Terjadi kesalahan saat menganalisis gambar.");
+            console.error(e);
+        }
+    };
+}
+</script>
+
+</body>
+</html>
